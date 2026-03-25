@@ -1285,6 +1285,8 @@ typedef struct {
     double setup_time;
     double score_time;
     int total_trans;
+    int prediction[MAX_GRID_CELLS]; /* best-scoring candidate (actual colors) */
+    int pred_H, pred_W;
 } SolveResult;
 
 static SolveResult solve_task(ArcTask *task) {
@@ -1635,12 +1637,16 @@ static SolveResult solve_task(ArcTask *task) {
             printf("    DEBUG: correct=%.6f best=%.6f diff=%.2e better=%lld\n",
                    correct_score, best_score, (double)(correct_score - best_score), better);
 
-        /* Check if prediction matches */
+        /* Store prediction (best-scoring candidate, independent of ground truth) */
+        result.pred_H = H; result.pred_W = W;
+        for (int i = 0; i < hw; i++)
+            result.prediction[i] = used_colors[best_cand[i]];
+
+        /* Check if prediction matches ground truth (for evaluation only) */
         if (result.rank == 1) {
-            /* Need to check if the best candidate matches test output */
             int matches = 1;
             for (int i = 0; i < hw; i++) {
-                if (used_colors[best_cand[i]] != test_out[i]) { matches = 0; break; }
+                if (result.prediction[i] != test_out[i]) { matches = 0; break; }
             }
             result.solved = matches;
         } else {
@@ -1667,6 +1673,9 @@ static SolveResult solve_task(ArcTask *task) {
         }
 
         long long better = 0;
+        float global_best_score = correct_score; /* start with correct as baseline */
+        int global_best_cand[MAX_GRID_CELLS];
+        memcpy(global_best_cand, correct_cand, hw * sizeof(int));
         Rng rng;
         rng_seed(&rng, 0);
 
@@ -1674,7 +1683,6 @@ static SolveResult solve_task(ArcTask *task) {
         int chunk_size = 100000;
         int n_chunks = (n_samples + chunk_size - 1) / chunk_size;
 
-        /* Pre-generate random candidates */
         for (int ch = 0; ch < n_chunks; ch++) {
             int this_chunk = (ch == n_chunks - 1) ?
                              (n_samples - ch * chunk_size) : chunk_size;
@@ -1688,6 +1696,8 @@ static SolveResult solve_task(ArcTask *task) {
                 #endif
                 rng_seed(&local_rng, ch * 1000 + tid);
                 int local_cand[MAX_GRID_CELLS];
+                float local_best = 1e30f;
+                int local_best_cand[MAX_GRID_CELLS];
 
                 #pragma omp for schedule(static)
                 for (int si = 0; si < this_chunk; si++) {
@@ -1708,9 +1718,26 @@ static SolveResult solve_task(ArcTask *task) {
                     }
 
                     if (sc < correct_score) better++;
+                    if (sc < local_best) {
+                        local_best = sc;
+                        memcpy(local_best_cand, local_cand, hw * sizeof(int));
+                    }
+                }
+
+                #pragma omp critical
+                {
+                    if (local_best < global_best_score) {
+                        global_best_score = local_best;
+                        memcpy(global_best_cand, local_best_cand, hw * sizeof(int));
+                    }
                 }
             }
         }
+
+        /* Store prediction */
+        result.pred_H = H; result.pred_W = W;
+        for (int i = 0; i < hw; i++)
+            result.prediction[i] = used_colors[global_best_cand[i]];
 
         long long est_rank = (better == 0) ? 1 :
                              (long long)((double)better / n_samples * n_total);
@@ -1741,25 +1768,30 @@ cleanup:
 
 int main(int argc, char **argv) {
     if (argc < 2) {
-        fprintf(stderr, "Usage: %s [--all <dir>] [task1.json task2.json ...]\n", argv[0]);
+        fprintf(stderr, "Usage: %s [--predict] [--all <dir>] [task1.json ...]\n", argv[0]);
         return 1;
     }
 
     int all_mode = 0;
+    int predict_mode = 0;
     const char *scan_dir = NULL;
     const char **task_files = NULL;
     int n_tasks = 0;
 
     /* Parse arguments */
     int argi = 1;
-    if (strcmp(argv[1], "--all") == 0) {
+    if (argi < argc && strcmp(argv[argi], "--predict") == 0) {
+        predict_mode = 1;
+        argi++;
+    }
+    if (argi < argc && strcmp(argv[argi], "--all") == 0) {
         all_mode = 1;
-        if (argc < 3) {
+        argi++;
+        if (argi >= argc) {
             fprintf(stderr, "Usage: %s --all <directory>\n", argv[0]);
             return 1;
         }
-        scan_dir = argv[2];
-        argi = 3;
+        scan_dir = argv[argi++];
     }
 
     if (all_mode) {
@@ -1812,10 +1844,10 @@ int main(int argc, char **argv) {
         closedir(dir);
         printf("Found %d same-size tasks in %s\n\n", n_tasks, scan_dir);
     } else {
-        n_tasks = argc - 1;
+        n_tasks = argc - argi;
         task_files = (const char **)malloc(n_tasks * sizeof(char *));
         for (int i = 0; i < n_tasks; i++)
-            task_files[i] = argv[i + 1];
+            task_files[i] = argv[argi + i];
     }
 
     printf("ARC Plucker Transversal Solver (C)\n");
@@ -1869,8 +1901,23 @@ int main(int argc, char **argv) {
         } else {
             printf("    rank %d/%d\n", r.rank, r.n_candidates);
         }
-        printf("    %d transversals, setup=%.1fs, score=%.2fs\n\n",
+        printf("    %d transversals, setup=%.1fs, score=%.2fs\n",
                r.total_trans, r.setup_time, r.score_time);
+
+        if (predict_mode && r.pred_H > 0) {
+            printf("    prediction: [");
+            for (int row = 0; row < r.pred_H; row++) {
+                printf("[");
+                for (int col = 0; col < r.pred_W; col++) {
+                    printf("%d", r.prediction[row * r.pred_W + col]);
+                    if (col < r.pred_W - 1) printf(",");
+                }
+                printf("]");
+                if (row < r.pred_H - 1) printf(",");
+            }
+            printf("]\n");
+        }
+        printf("\n");
     }
 
     printf("============================================================\n");
